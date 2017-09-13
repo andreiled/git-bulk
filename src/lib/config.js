@@ -6,17 +6,20 @@ class Config {
      * @param repositoryRoot The file path to the the root of the repositories. If
      * this path is '/home/user/worskpace/src', then 'src' should contain many git
      * repositories.
-     * @param {Array<string>}repositories Can be specified in place of the repositoryRoot.
+     * @param {Array<string>} repositories Can be specified in place of the repositoryRoot.
      * Each item in this array should be the absolute path to a git repository.
+     * @param {Array} groups Can be specified in place of the repositoryRoot in addition to
+     * repositories
      */
-    constructor(repositoryRoot, repositories) {
+    constructor(repositoryRoot, repositories, groups) {
         this.repositoryRoot = repositoryRoot;
         this.repositories = repositories;
+        this.groups = groups;
     }
 
     static fromJSONFile(jsonPath) {
         const json = require(jsonPath);
-        return new Config(json.repositoryRoot, json.repositories);
+        return new Config(json.repositoryRoot, json.repositories, json.groups);
     }
 }
 

@@ -1,6 +1,7 @@
 'use strict';
 const Immutable = require('immutable');
 const GitStatus = require('./git-status');
+const GitGroup = require('./git-group');
 const GitPackage = require('./git-package');
 const path = require('path');
 const fs = require('fs');
@@ -35,12 +36,33 @@ class GitRepoCollection {
               .map(dir => path.join(config.repositoryRoot, dir));
         } else if (config.repositories) {
             dirs = Immutable.fromJS(config.repositories);
-        } else {
-            throw 'Config needs to have either a repositoryRoot or repositories array';
+        }
+        if (config.groups) {
+            this.groups = Immutable.fromJS(config.groups).map((groupConfig) => {
+                return new GitGroup(groupConfig.get('name'), groupConfig.get('repositories').map((repoConfig) => {
+                    if (repoConfig.get('path')) {
+                        return new GitPackage(repoConfig.get('path'), repoConfig.get('alias'));
+                    } else {
+                        return new GitPackage(repoConfig);
+                    }
+                }).toSet());
+            }).toSet();
+        }
+        if (!dirs && !this.groups) {
+            throw 'Config needs to have either a repositoryRoot or repositories array or groups array';
         }
 
-        this.repos = dirs.filter(isGitDir)
-          .map((packageRoot) => new GitPackage(packageRoot));
+        if (dirs) {
+            var defaultGroup = new GitGroup('', dirs.filter(isGitDir)
+                    .map((packageRoot) => new GitPackage(packageRoot)).toSet());
+            if (this.groups) {
+                this.groups.add(defaultGroup);
+            } else {
+                this.groups = Immutable.Set.of(defaultGroup);
+            }
+        }
+
+        this.allRepos = Immutable.Set.union(this.groups.map((group) => group.repositories));
     }
 
     /**
@@ -184,26 +206,36 @@ class GitRepoCollection {
 
     /**
      *
-     * @param {Array<string>} targetRepoPaths
+     * @param {Array<string>} targetRepoSpecs
      * @returns {Immutable.List<GitPackage>}
      * @private
      */
-    _filterByPaths(targetRepoPaths) {
-        const baseNames = Immutable.Set(targetRepoPaths)
-          .map(repoPath => path.basename(repoPath));
+    _filterBySpecs(targetRepoSpecs) {
+        const specs = Immutable.Set(targetRepoSpecs).map((repoSpec) => {
+            if (repoSpec.startsWith(':')) {
+                var parts = repoSpec.split(':');
+                return Immutable.Map({group: parts[1],
+                    name: (parts.length > 2 ? parts[2] : '')});
+            } else {
+                return Immutable.Map({group: '', name: path.basename(repoSpec)});
+            }
+        });
 
-        return this.repos.filter((repo) => baseNames.includes(repo.basename));
+        return Immutable.Set.union(this.groups.map((group) => group.repositories.filter((repo) => {
+            return specs.includes(Immutable.Map({'group': group.name, 'name': repo.basename}))
+                    || specs.includes(Immutable.Map({'group': group.name, 'name': ''}));
+        })));
     }
 
     /**
      *
      * @param {boolean} showAll
-     * @param {Array<string>} filterRepoNames
+     * @param {Array<string>} filterRepoSpecs
      * @param {function} handler
      * @private
      */
-    _runWithStatus(showAll, filterRepoNames, handler) {
-        const repos = filterRepoNames.length > 0 ? this._filterByPaths(filterRepoNames) : this.repos;
+    _runWithStatus(showAll, filterRepoSpecs, handler) {
+        const repos = filterRepoSpecs.length > 0 ? this._filterBySpecs(filterRepoSpecs) : this.allRepos;
 
         repos.forEach((repo) => repo.git.status.call(repo.git, function (err, data) {
             const status = new GitStatus(data);
@@ -218,15 +250,15 @@ class GitRepoCollection {
 
     /**
      * @param {boolean} showAll Whether to show all repos or only ones with changes
-     * @param {Array<string>} filterRepoNames Filtered subset of repos to use
+     * @param {Array<string>} filterRepoSpecs Filtered subset of repos to use
      * @param {function(err, data, status repo) => ?} handler A function that will be passed
      * the raw repo data.
      * @returns {Promise} A Promise that resolves using a .all on each of the repos.
      * You'll have an array of GitPackage objects to work with in a .then.
      * @private
      */
-    _runAgainstRepos(showAll, filterRepoNames, command, handler){
-        const repos = filterRepoNames.length > 0 ? this._filterByPaths(filterRepoNames) : this.repos;
+    _runAgainstRepos(showAll, filterRepoSpecs, command, handler){
+        const repos = filterRepoNames.length > 0 ? this._filterBySpecs(_filterByPaths) : this.allRepos;
 
         const repoResults = repos.map(function(repo){
             return new Promise((acc,rej) => {
