@@ -8,7 +8,7 @@ is to make managing changes and branches across multiple repositories easy.
 
 At the moment, it makes assumptions based on my own workspaces: a project single
 root with many repositories in a `src` folder. If you want to customize this
-behavior then you can add a `.gitbulkconfig` file. See the Configuraiton section
+behavior then you can add a `.gitbulkconfig` file. See the Configuration section
 below.
 
 ## Installation
@@ -49,42 +49,53 @@ of the repositories as well, which looks like `git-bulk status ./src/Repo1 ./src
 Repository names can be specified as directory names or paths. For more information on these
 commands, run `git-bulk help <command>`.
 
-`git-bulk help` -
+### `git-bulk help`
 Show the help menu with a list of all possible operations.
 
-`git-bulk status` -
+### `git-bulk status`
 Execute `git status` on all of the repositories that have any changes, where a
 change can be modified files, committed files, or being ahead/behind of the
 tracking branch. Names are color coded as well. Repository names will be green
 when they have no uncommitted changes and they are ahead of the remote, blue
 when there are uncommitted changes, and red when they are behind the remote.
 
-`git-bulk fetch` -
+### `git-bulk fetch`
 Execute a `git fetch` on each of the git repositories. Each repository name will
 be printed, along with whether it was successful or not.
 
-`git-bulk branch` -
-Execute a `git branch -v` on each of the gir repositories.
+### `git-bulk branch`
+Execute a `git branch -v` on each of the git repositories.
 
-`git-bulk log` -
+### `git-bulk log`
 Execute a `git log` on each of the git repositories. This will use a condensed,
 custom graph view to display the log for each repo. Optionally pass `-n <number>`
 to change the amount of commits displayed, and `-A` to show all branches at once.
 
-`git-bulk reset` -
+### `git-bulk reset`
 Execute a `git reset` on each git repository. You can pass a `-h` or `--hard` switch
 as well.
 
-`git-bulk checkout` -
+### `git-bulk checkout`
 Execute a `git checkout` on each git repository. Passing `-b branchName` is
 mandatory. Passing a `-u branchName` option will also set a tracking branch when
 creating branches. This will checkout the branch on the target packages, or
 create it if it does not exist.
 
-`git-bulk rebase` -
+### `git-bulk rebase`
 Execute a `git rebase` on each git repository. The rebase will only affect
 repos with changes, unless the `-a` flag is given. If the `-i` flag is given,
 then rebase will be run in interactive mode. Repo names/paths can also be specified to run
 rebase on a subset of repos. The -a flag is still required, even when
 specifying repo names manually that have no changes.
 
+### `git-bulk exec`
+Execute an arbitrary shell command specified using the `-c` argument on each git repository.
+For example, to create a new feature branch in `origin` remote using `development` branch in `upstream` remote:
+* on Linux and similar systems:
+    ```
+    git bulk exec -c 'git fetch upstream && git push origin upstream/development:refs/heads/feature/%FEATURE_NAME%'
+    ```
+* on Windows with `bash` available (e.g. Git Bash): 
+    ```
+    git bulk exec -c 'bash -c "git fetch upstream && git push origin upstream/development:refs/heads/feature/%FEATURE_NAME%"'
+    ```
