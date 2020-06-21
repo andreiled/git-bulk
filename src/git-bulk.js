@@ -14,6 +14,7 @@ program.version(HelpStrings.version)
   .command('rebase', HelpStrings.rebaseDoc)
   .command('checkout', HelpStrings.checkoutDoc)
   .command('exec', HelpStrings.execDoc)
+  .command('edit', HelpStrings.editDoc)
 ;
 
 program.parse(process.argv);

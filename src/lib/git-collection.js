@@ -208,6 +208,27 @@ class GitRepoCollection {
     }
 
     /**
+     * @param {string} commandLine shell command line to be executed for each repository
+     * @param {Array<string>} targetRepoPaths
+     */
+    edit(commandLine, targetRepoPaths) {
+        this._runWithStatus(true, targetRepoPaths, (repo, status) => {
+            if (status.anyChanged()) {
+                console.error('[%s] Uncommitted changes found, please commit/stash the changes before trying again'.red,
+                        repo.path);
+            }
+
+            // TODO: get remote name from the branch name
+            repo.git.fetch(['nc'], err => {
+                if (err) {
+                    console.error('[%s] Could not fetch changes:\n%s'.red, repo.basename, err);
+                }
+            });
+            ChildProcess.execSync(commandLine, {cwd: repo.path, windowsHide: true, stdio: 'inherit'});
+        });
+    }
+
+    /**
      *
      * @param {Array<string>} targetRepoSpecs
      * @returns {Immutable.List<GitPackage>}
