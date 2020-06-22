@@ -17,7 +17,7 @@
     "colors": "1.1.2",
     "commander": "2.9.0",
     "immutable": "3.7.6",
-    "prepend-transform": "0.0.1019",
+    "merge-stream-in-chunks": "^0.1.2",
     "simple-git": "1.25.0"
   },
   "devDependencies": {
