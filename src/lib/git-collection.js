@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const git = require('simple-git');
 const ChildProcess = require('child_process');
-const PrependTransform = require('prepend-transform');
+const OutputChunksMerger = require('merge-stream-in-chunks');
 const process = require('./process');
 const isDir = require('./is-dir');
 const DateUtils = require('./date-utils');
@@ -49,8 +49,6 @@ class GitRepoCollection {
                 return new GitPackage(repoConfig);
             }
         });
-
-        require('events').EventEmitter.defaultMaxListeners = this.repos.size;
     }
 
     /**
@@ -200,10 +198,15 @@ class GitRepoCollection {
      * @param {Array<string>} targetRepoPaths
      */
     exec(commandLine, targetRepoPaths) {
+        var stdout = new OutputChunksMerger({prefix: '  ', maxSources: this.repos.size});
+        var stderr = new OutputChunksMerger({prefix: '  ', maxSources: this.repos.size});
+        stdout.pipe(process.stdout);
+        stderr.pipe(process.stderr);
+
         this._runWithStatus(true, targetRepoPaths, (repo, status) => {
             var shell = ChildProcess.spawn(commandLine, {cwd: repo.path, shell:true, windowsHide: true});
-            shell.stdout.pipe(PrependTransform.pt(`[${repo.basename}] `)).pipe(process.stdout);
-            shell.stderr.pipe(PrependTransform.pt(`[${repo.basename}] `.red)).pipe(process.stderr);
+            stdout.add(status.toString(repo.basename), shell.stdout);
+            stderr.add(status.toString(repo.basename), shell.stderr);
         });
     }
 
